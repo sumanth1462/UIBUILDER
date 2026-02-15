@@ -5,7 +5,7 @@ A powerful playground that transforms design images and Figma files into product
 ## 🚀 Features
 
 - **Design Upload**: Upload design images (PNG, JPG, GIF, WebP) or Figma files
-- **AI-Powered Analysis**: Uses Claude 3.5 Sonnet to analyze designs and extract UI elements
+- **AI-Powered Analysis**: Uses Claude 3.5 Sonnet or any AI to analyze designs and extract UI elements
 - **Multi-Framework Code Generation**:
   - React (TSX/JSX)
   - Angular (TypeScript + Template)
