@@ -51,8 +51,13 @@ Start the development server:
 ```bash
 npm run dev
 ```
+Start the development server:(both Frontent and backend)
+```bash
+npm run dev:full
+```
 
 This will open the application at `http://localhost:5173`
+This will run server at `http://localhost:3001`
 
 ### Build for Production
 
