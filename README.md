@@ -21,7 +21,7 @@ A powerful playground that transforms design images and Figma files into product
 Before you start, you'll need:
 
 1. **Node.js** (v16 or higher)
-2. **Claude API Key** (get it from [platform.anthropic.com](https://console.anthropic.com/))
+2. **Claude API Key** (get it from [platform.anthropic.com](https://console.anthropic.com/)) or any AI API KEY
 3. **Figma API Key** (optional - for direct Figma integration)
 
 ## 🛠️ Installation
