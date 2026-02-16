@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { UIBuilderStore, DesignDocument, DesignAnalysisResult, GeneratedCode, DesignElement } from '../types'
+import type { UIBuilderStore, DesignDocument, DesignAnalysisResult, GeneratedCode, DesignElement, PlaygroundState } from '../types'
 
 export const useUIBuilderStore = create<UIBuilderStore>((set) => ({
   currentDocument: null,
@@ -8,9 +8,22 @@ export const useUIBuilderStore = create<UIBuilderStore>((set) => ({
   loading: false,
   error: null,
   selectedElement: null,
+  activeTab: 'preview',
+  playgroundState: null,
 
   setCurrentDocument: (doc: DesignDocument) =>
     set({ currentDocument: doc, selectedElement: null }),
+
+  updateCurrentDocumentOptions: (framework?: 'angular' | 'flutter' | 'react' | 'html', outputFormat?: 'json' | 'code') =>
+    set((state) => ({
+      currentDocument: state.currentDocument
+        ? {
+            ...state.currentDocument,
+            framework: framework || state.currentDocument.framework,
+            outputFormat: outputFormat || state.currentDocument.outputFormat,
+          }
+        : null,
+    })),
 
   setAnalysisResult: (result: DesignAnalysisResult) =>
     set({ analysisResult: result }),
@@ -27,6 +40,19 @@ export const useUIBuilderStore = create<UIBuilderStore>((set) => ({
   setSelectedElement: (element: DesignElement | null) =>
     set({ selectedElement: element }),
 
+  setActiveTab: (tab: 'preview' | 'code' | 'playground' | 'compare') =>
+    set({ activeTab: tab }),
+
+  setPlaygroundState: (state: PlaygroundState) =>
+    set({ playgroundState: state }),
+
+  updatePlaygroundCode: (code: string) =>
+    set((state) => ({
+      playgroundState: state.playgroundState
+        ? { ...state.playgroundState, code }
+        : null,
+    })),
+
   reset: () =>
     set({
       currentDocument: null,
@@ -35,5 +61,8 @@ export const useUIBuilderStore = create<UIBuilderStore>((set) => ({
       loading: false,
       error: null,
       selectedElement: null,
+      activeTab: 'preview',
+      playgroundState: null,
     }),
 }))
+

@@ -1,11 +1,13 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useUIBuilderStore } from '../store'
 import { convertFileToBase64 } from '../utils'
 import styles from './UploadSection.module.css'
 
 export const UploadSection: React.FC = () => {
-  const { setCurrentDocument, setLoading, setError } = useUIBuilderStore()
+  const { setCurrentDocument, updateCurrentDocumentOptions, setLoading, setError, currentDocument } = useUIBuilderStore()
+  const [framework, setFramework] = useState<'react' | 'angular' | 'flutter' | 'html'>('react')
+  const [outputFormat, setOutputFormat] = useState<'code' | 'json'>('code')
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -24,6 +26,8 @@ export const UploadSection: React.FC = () => {
           source: 'image',
           imageUrl: base64,
           elements: [],
+          framework,
+          outputFormat,
           metadata: {
             width: 1920,
             height: 1080,
@@ -36,7 +40,7 @@ export const UploadSection: React.FC = () => {
         setLoading(false)
       }
     },
-    [setCurrentDocument, setLoading, setError]
+    [setCurrentDocument, setLoading, setError, framework, outputFormat]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -71,6 +75,8 @@ export const UploadSection: React.FC = () => {
                 source: 'figma',
                 figmaUrl: text,
                 elements: [],
+                framework,
+                outputFormat,
                 metadata: {
                   width: 1920,
                   height: 1080,
@@ -81,6 +87,46 @@ export const UploadSection: React.FC = () => {
           }}
         />
       </div>
+
+      {currentDocument && (
+        <div className={styles.optionsPanel}>
+          <div className={styles.optionGroup}>
+            <label htmlFor="framework">Framework:</label>
+            <select
+              id="framework"
+              value={framework}
+              onChange={(e) => {
+                const newFramework = e.target.value as 'react' | 'angular' | 'flutter' | 'html'
+                setFramework(newFramework)
+                updateCurrentDocumentOptions(newFramework, undefined)
+              }}
+              className={styles.select}
+            >
+              <option value="react">React</option>
+              <option value="angular">Angular</option>
+              <option value="flutter">Flutter</option>
+              <option value="html">HTML</option>
+            </select>
+          </div>
+
+          <div className={styles.optionGroup}>
+            <label htmlFor="format">Output Format:</label>
+            <select
+              id="format"
+              value={outputFormat}
+              onChange={(e) => {
+                const newFormat = e.target.value as 'code' | 'json'
+                setOutputFormat(newFormat)
+                updateCurrentDocumentOptions(undefined, newFormat)
+              }}
+              className={styles.select}
+            >
+              <option value="code">Code</option>
+              <option value="json">JSON</option>
+            </select>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

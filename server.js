@@ -23,20 +23,60 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' })
 })
 
+// Helper function to generate language-specific prompts
+function generatePrompt(framework, outputFormat, description) {
+  const contextInfo = description ? `Context: ${description}` : ''
+
+  if (outputFormat === 'code') {
+    const prompts = {
+      react: `Analyze this UI design image and generate production-ready React TypeScript code. Generate a functional React component that recreates this design. Include proper TypeScript types, state management if needed, event handlers, CSS modules or inline styles, responsive design. ${contextInfo} Return ONLY code without markdown formatting.`,
+      angular: `Analyze this UI design image and generate production-ready Angular code. Generate an Angular component with TypeScript class and HTML template. Include component class with types, Angular directives, event bindings, two-way binding if needed, inline styles. ${contextInfo} Return ONLY code without markdown formatting.`,
+      flutter: `Analyze this UI design image and generate production-ready Flutter code. Generate a Flutter widget with proper widgets like Column, Row, Container, Material Design components, styling, theming, state management if needed. ${contextInfo} Return ONLY code without markdown formatting.`,
+      html: `Analyze this UI design image and generate production-ready HTML5 code with CSS. Generate semantic HTML with CSS styling. Include semantic tags, mobile-responsive CSS, Flexbox or Grid, accessibility attributes, form elements. ${contextInfo} Return ONLY code without markdown formatting.`,
+    }
+    return prompts[framework] || prompts.react
+  } else {
+    // JSON format - simplified without complex nested examples that break JSON
+    const prompts = {
+      react: `Analyze this UI design image. Return valid JSON with elements array. Each element has id, type (button/input/text/image/container/card/list/icon), name, x, y, width, height, and args object with properties. ${contextInfo}`,
+      angular: `Analyze this UI design. Return valid JSON with template object. Template has element (tag), text, classNames array, attributes array (name/value pairs), listeners array (eventName/callBack), children array. ${contextInfo}`,
+      flutter: `Analyze this UI design. Return valid JSON with widgets array. Each widget has type (Container/Button/TextField/Text/Icon), name, position object, size object, args with decoration, style, child, children, onPressed, onChanged, keyboardType. ${contextInfo}`,
+      html: `Analyze this UI design. Return valid JSON with elements array. Each element has id, type (button/input/text/image/div/section/header/footer), name, x, y, width, height, args with properties. ${contextInfo}`,
+    }
+    return prompts[framework] || prompts.react
+  }
+}
+
+
+// Helper to get language for each framework
+function getLanguageForFramework(framework) {
+  const languages = {
+    react: 'jsx',
+    angular: 'html',
+    flutter: 'dart',
+    html: 'html',
+  }
+  return languages[framework] || 'text'
+}
+
 // Gemini API proxy endpoint
 app.post('/api/analyze-design', async (req, res) => {
   try {
-    const { imageUrl, description } = req.body
+    const { imageUrl, description, framework, outputFormat } = req.body
 
     if (!imageUrl) {
       return res.status(400).json({ error: 'imageUrl is required' })
+    }
+
+    if (!framework || !outputFormat) {
+      return res.status(400).json({ error: 'framework and outputFormat are required' })
     }
 
     if (!GEMINI_API_KEY) {
       return res.status(500).json({ error: 'Gemini API key not configured' })
     }
 
-    console.log('Analyzing design with Gemini...')
+    console.log(`Analyzing design with Gemini for ${framework} (${outputFormat})...`)
 
     try {
       // For Gemini v1 API with proper image handling
@@ -52,6 +92,9 @@ app.post('/api/analyze-design', async (req, res) => {
         }
       }
 
+      // Generate prompt based on framework and output format
+      const prompt = generatePrompt(framework, outputFormat, description)
+
       const geminiResponse = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
         {
@@ -59,62 +102,7 @@ app.post('/api/analyze-design', async (req, res) => {
             {
               parts: [
                 {
-                  text: `Analyze this Flutter UI design image and extract all visible Flutter widgets. Return ONLY a valid JSON object with this exact structure where each widget has Flutter-specific types (ElevatedButton, TextField, Text, Container, Column, Row, Card, Image, Icon, etc):
-{
-  "elements": [
-    {
-      "type": "ElevatedButton",
-      "args": {
-        "onPressed": "\${handleButtonPress()}",
-        "style": {
-          "backgroundColor": "#0ea5e9",
-          "padding": "12 24"
-        },
-        "child": {
-          "type": "Text",
-          "args": {
-            "text": "Get Started",
-            "style": {
-              "fontSize": 16,
-              "fontWeight": "bold",
-              "color": "#ffffff"
-            }
-          }
-        }
-      }
-    },
-    {
-      "type": "TextField",
-      "args": {
-        "decoration": {
-          "hintText": "Enter your email",
-          "border": "OutlineInputBorder",
-          "contentPadding": "12 16"
-        },
-        "keyboardType": "email",
-        "style": {
-          "fontSize": 14
-        }
-      }
-    },
-    {
-      "type": "Text",
-      "args": {
-        "text": "Welcome to UIBuilder",
-        "style": {
-          "fontSize": 28,
-          "fontWeight": "bold",
-          "color": "#1e293b"
-        }
-      }
-    }
-  ],
-  "summary": "Brief description of the Flutter UI",
-  "confidence": 0.9,
-  "suggestions": ["improvement1", "improvement2"]
-}
-
-${description ? `Context: ${description}` : 'Extract all Flutter widgets from this design image and return valid Flutter widget structure.'}`,
+                  text: prompt,
                 },
                 {
                   inlineData: {
@@ -136,10 +124,36 @@ ${description ? `Context: ${description}` : 'Extract all Flutter widgets from th
 
       const content = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text
       if (content) {
-        const jsonMatch = content.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          const analysisResult = JSON.parse(jsonMatch[0])
-          return res.json(analysisResult)
+        // If outputFormat is 'code', extract both code and analysis
+        if (outputFormat === 'code') {
+          // Try to extract code from markdown code blocks
+          let code = content
+          const codeMatch = content.match(/```[\w-]*\n([\s\S]*?)\n```/)
+          if (codeMatch && codeMatch[1]) {
+            code = codeMatch[1]
+          }
+          
+          // Return code as GeneratedCode, but also include minimal analysis for preview
+          return res.json({
+            code: code.trim(),
+            format: 'code',
+            framework: framework,
+            language: getLanguageForFramework(framework),
+            // Include analysis metadata for preview/compare tabs
+            analysisResult: {
+              elements: [],
+              summary: `Generated ${framework} code from design`,
+              confidence: 0.85,
+              suggestions: ['Code generated successfully']
+            }
+          })
+        } else {
+          // If outputFormat is 'json', try to extract JSON with full analysis
+          const jsonMatch = content.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            const result = JSON.parse(jsonMatch[0])
+            return res.json(result)
+          }
         }
       }
 
@@ -172,7 +186,7 @@ ${description ? `Context: ${description}` : 'Extract all Flutter widgets from th
             "position": {},
             "size": {},
             "args": {
-              "onPressed": "${handleAction()}",
+              "onPressed": "\${handleAction()}",
               "style": {
                 "backgroundColor": "#0ea5e9",
                 "padding": "12 24",
@@ -329,7 +343,7 @@ ${description ? `Context: ${description}` : 'Extract all Flutter widgets from th
             "position": {},
             "size": {},
             "args": {
-              "onPressed": "${handleFloatingAction()}",
+              "onPressed": "\${handleFloatingAction()}",
               "backgroundColor": "#0ea5e9",
               "child": {
                 "type": "Icon",

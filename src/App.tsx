@@ -1,18 +1,36 @@
-import React, { useState } from 'react'
 import { useUIBuilderStore } from './store'
 import { geminiApi } from './api/claude'
+import type { DesignAnalysisResult } from './types'
 import UploadSection from './components/UploadSection'
 import DesignPreview from './components/DesignPreview'
 import CodeGenerator from './components/CodeGenerator'
+import Playground from './components/Playground'
+import ComparisonView from './components/ComparisonView'
 import './App.css'
 
 function App() {
-  const { currentDocument, setAnalysisResult, setLoading, setError, loading, error } = useUIBuilderStore()
-  const [showAnalysis, setShowAnalysis] = useState(false)
+  const {
+    currentDocument,
+    setAnalysisResult,
+    setGeneratedCode,
+    setLoading,
+    setError,
+    loading,
+    error,
+    activeTab,
+    setActiveTab,
+    analysisResult,
+    generatedCode,
+  } = useUIBuilderStore()
 
   const handleAnalyzeDesign = async () => {
     if (!currentDocument?.imageUrl) {
       setError('No image to analyze')
+      return
+    }
+
+    if (!currentDocument.framework || !currentDocument.outputFormat) {
+      setError('Please select framework and output format')
       return
     }
 
@@ -22,14 +40,54 @@ function App() {
     try {
       const result = await geminiApi.analyzeDesign(
         currentDocument.imageUrl,
+        currentDocument.framework,
+        currentDocument.outputFormat,
         currentDocument.metadata.description
       )
-      setAnalysisResult(result)
-      setShowAnalysis(true)
+
+      console.log('analyzeDesign result:', result)
+
+      // Handle response with both code and analysis
+      if ('code' in result && 'framework' in result) {
+        // It's GeneratedCode response
+        const codeResult = result as any
+        setGeneratedCode(codeResult)
+        
+        // Also set analysis result if included (for preview/compare tabs)
+        if (codeResult.analysisResult) {
+          console.log('setting analysisResult from codeResult.analysisResult', codeResult.analysisResult)
+          setAnalysisResult(codeResult.analysisResult)
+        } else {
+          console.log('no analysisResult in codeResult')
+        }
+        
+        setActiveTab('code')
+      } else {
+        // It's DesignAnalysisResult with elements
+        const analysisResult = result as DesignAnalysisResult
+        console.log('setting analysisResult from result:', analysisResult)
+        setAnalysisResult(analysisResult)
+        setActiveTab('preview')
+      }
     } catch (err) {
       setError(`Analysis failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'preview':
+        return <DesignPreview />
+      case 'code':
+        return <CodeGenerator />
+      case 'compare':
+        return <ComparisonView />
+      case 'playground':
+        return <Playground />
+      default:
+        return <DesignPreview />
     }
   }
 
@@ -71,22 +129,48 @@ function App() {
 
         <div className="right-panel">
           <div className="panel-tabs">
-            <button
-              className={`tab ${!showAnalysis ? 'active' : ''}`}
-              onClick={() => setShowAnalysis(false)}
-            >
-              Design Preview
-            </button>
-            <button
-              className={`tab ${showAnalysis ? 'active' : ''}`}
-              onClick={() => setShowAnalysis(true)}
-            >
-              Generate Code
-            </button>
+            {analysisResult && (
+              <>
+                <button
+                  className={`tab ${activeTab === 'preview' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('preview')}
+                >
+                  Design Preview
+                </button>
+                <button
+                  className={`tab ${activeTab === 'compare' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('compare')}
+                >
+                  Compare
+                </button>
+              </>
+            )}
+            {generatedCode && (
+              <>
+                <button
+                  className={`tab ${activeTab === 'code' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('code')}
+                >
+                  Generate Code
+                </button>
+                <button
+                  className={`tab ${activeTab === 'playground' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('playground')}
+                >
+                  Playground
+                </button>
+              </>
+            )}
           </div>
 
           <div className="panel-content">
-            {!showAnalysis ? <DesignPreview /> : <CodeGenerator />}
+            {analysisResult && generatedCode ? (
+              renderContent()
+            ) : !analysisResult ? (
+              <DesignPreview />
+            ) : (
+              <CodeGenerator />
+            )}
           </div>
         </div>
       </div>
