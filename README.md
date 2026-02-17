@@ -5,7 +5,7 @@ A powerful playground that transforms design images and Figma files into product
 ## 🚀 Features
 
 - **Design Upload**: Upload design images (PNG, JPG, GIF, WebP) or Figma files
-- **AI-Powered Analysis**: Uses Claude 3.5 Sonnet or any AI to analyze designs and extract UI elements
+- **AI-Powered Analysis**: Supports gemini api to analyze designs and extract UI elements
 - **Multi-Framework Code Generation**:
   - React (TSX/JSX)
   - Angular (TypeScript + Template)
@@ -21,7 +21,7 @@ A powerful playground that transforms design images and Figma files into product
 Before you start, you'll need:
 
 1. **Node.js** (v16 or higher)
-2. **Claude API Key** (get it from [platform.anthropic.com](https://console.anthropic.com/)) or any AI API KEY
+2. **API Key**  Gemini AI API KEY
 3. **Figma API Key** (optional - for direct Figma integration)
 
 ## 🛠️ Installation
